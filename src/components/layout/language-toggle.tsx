@@ -2,17 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
+import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Globe } from "lucide-react";
 
 const languages = [
-  { code: "es", label: "Espanol", flag: "\u{1F1EA}\u{1F1F8}" },
-  { code: "en", label: "English", flag: "\u{1F1FA}\u{1F1F8}" },
+  { code: "es", label: "Español", image: "/spain.jpg" },
+  { code: "en", label: "English", image: "/us.jpg" },
 ] as const;
 
 export function LanguageToggle() {
@@ -29,10 +29,16 @@ export function LanguageToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding px-2.5 text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground h-7 cursor-pointer"
+        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding px-2.5 text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground h-8 cursor-pointer"
       >
-        <Globe className="size-4" />
-        <span className="text-sm">{currentLang.flag}</span>
+        <Image
+          src={currentLang.image}
+          alt={currentLang.label}
+          width={20}
+          height={14}
+          className="h-3.5 w-5 rounded-sm object-cover"
+        />
+        <span className="text-xs uppercase">{currentLang.code}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {languages.map((lang) => (
@@ -41,7 +47,13 @@ export function LanguageToggle() {
             onClick={() => handleLocaleChange(lang.code)}
             className={locale === lang.code ? "bg-accent" : ""}
           >
-            <span className="mr-2">{lang.flag}</span>
+            <Image
+              src={lang.image}
+              alt={lang.label}
+              width={20}
+              height={14}
+              className="mr-2 h-3.5 w-5 rounded-sm object-cover"
+            />
             {lang.label}
           </DropdownMenuItem>
         ))}

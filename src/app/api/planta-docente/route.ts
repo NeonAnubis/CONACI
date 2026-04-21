@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const procesoId = searchParams.get("procesoId");
 
   try {
-    let where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {};
 
     if (procesoId) {
       where.procesoId = procesoId;

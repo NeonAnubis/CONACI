@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import Image from "next/image";
@@ -15,14 +16,18 @@ const languages = [
   { code: "en", label: "English", image: "/us.jpg" },
 ] as const;
 
+function setCookie(name: string, value: string) {
+  globalThis.document.cookie = `${name}=${value};path=/;max-age=31536000`;
+}
+
 export function LanguageToggle() {
   const router = useRouter();
   const locale = useLocale();
 
-  function handleLocaleChange(newLocale: string) {
-    document.cookie = `locale=${newLocale};path=/;max-age=31536000`;
+  const handleLocaleChange = useCallback((newLocale: string) => {
+    setCookie("locale", newLocale);
     router.refresh();
-  }
+  }, [router]);
 
   const currentLang = languages.find((l) => l.code === locale) ?? languages[0];
 

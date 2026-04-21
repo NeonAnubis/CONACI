@@ -87,9 +87,10 @@ export function DataTable<T extends Record<string, any>>({
   const safePage = Math.min(page, totalPages - 1);
   const pageData = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
-  React.useEffect(() => {
+  const handleSearch = React.useCallback((value: string) => {
+    setSearch(value);
     setPage(0);
-  }, [search]);
+  }, []);
 
   function handleSort(key: string) {
     if (sortKey === key) {
@@ -118,7 +119,7 @@ export function DataTable<T extends Record<string, any>>({
           <Input
             placeholder={searchPlaceholder || t("search")}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             className="pl-8"
           />
         </div>

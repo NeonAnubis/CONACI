@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { UserMenu } from "@/components/layout/user-menu";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -138,6 +139,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="flex-1" />
+
+          {/* Language toggle */}
+          <LanguageToggle />
 
           {/* User menu */}
           <UserMenu />

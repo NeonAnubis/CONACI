@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -76,7 +75,7 @@ export function UserMenu() {
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-        <DropdownMenuLabel className="font-normal">
+        <div className="px-2 py-2">
           <div className="flex items-start gap-3 py-1">
             <Avatar>
               <AvatarFallback className="bg-sky-100 text-sky-700 text-sm font-semibold">
@@ -111,7 +110,7 @@ export function UserMenu() {
               </div>
             </div>
           </div>
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/login" })}

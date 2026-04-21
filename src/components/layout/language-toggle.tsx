@@ -36,7 +36,7 @@ export function LanguageToggle() {
           alt={currentLang.label}
           width={20}
           height={14}
-          className="h-3.5 w-5 rounded-sm object-cover"
+          className="h-3.5 w-5 object-cover"
         />
         <span className="text-xs uppercase">{currentLang.code}</span>
       </DropdownMenuTrigger>

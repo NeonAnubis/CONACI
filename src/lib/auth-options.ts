@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, withRetry } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -22,9 +22,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email y contrasena son requeridos");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        const user = await withRetry(() =>
+          prisma.user.findUnique({
+            where: { email: credentials.email },
+          })
+        );
 
         if (!user || !user.activo) {
           throw new Error("Credenciales invalidas");

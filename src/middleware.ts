@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Never intercept API routes or auth routes
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
+  // Protect dashboard routes
   if (pathname.startsWith("/dashboard")) {
     const token = await getToken({
       req: request,

@@ -1,0 +1,540 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum RolSistema {
+  INSTITUCION
+  EVALUADOR
+  CONACI
+}
+
+enum SubRolConaci {
+  COMITE_DICTAMEN
+  ADMINISTRADOR
+}
+
+enum RolInstitucion {
+  COORDINADOR
+  RESPONSABLE
+}
+
+enum EstadoProceso {
+  EN_PREPARACION
+  EN_AUTOEVALUACION
+  EN_EVALUACION
+  EN_DICTAMEN
+  COMPLETADO
+}
+
+enum EtapaEvaluacion {
+  AUTOEVALUACION
+  REVISION_GABINETE
+  SOLICITUD_INFORMACION
+  RESPUESTA_INSTITUCION
+  VISITA_IN_SITU
+  DICTAMEN
+  FINALIZADO
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  RESPONDIDA
+  CERRADA
+}
+
+enum TipoEvidencia {
+  DOCUMENTO
+  ENLACE
+  ARCHIVO_ADJUNTO
+  IMAGEN
+  VIDEO
+}
+
+enum TipoContratacion {
+  TIEMPO_COMPLETO
+  TRES_CUARTOS
+  MEDIO_TIEMPO
+  ASIGNATURA
+  INVESTIGADOR
+  EXTERNO
+}
+
+enum GradoAcademico {
+  TSU
+  PA
+  LICENCIATURA
+  ESPECIALIDAD
+  MAESTRIA
+  DOCTORADO
+}
+
+enum TipoIngreso {
+  NUEVO_INGRESO
+  REINGRESO
+}
+
+enum Genero {
+  HOMBRES
+  MUJERES
+}
+
+enum TipoPrograma {
+  LICENCIATURA
+  MAESTRIA
+  DOCTORADO
+  ESPECIALIDAD
+}
+
+enum ResultadoAcreditacion {
+  ACREDITACION_CONSOLIDADA
+  ACREDITACION_EN_DESARROLLO
+  ACREDITACION_CONDICIONADA
+  NO_ACREDITADO
+}
+
+// ==================== AUTH (NextAuth) ====================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==================== USERS ====================
+
+model User {
+  id              String          @id @default(cuid())
+  name            String
+  email           String          @unique
+  password        String
+  rolSistema      RolSistema
+  subRolConaci    SubRolConaci?
+  rolInstitucion  RolInstitucion?
+  activo          Boolean         @default(true)
+  image           String?
+  emailVerified   DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  accounts               Account[]
+  sessions               Session[]
+  procesosUsuario        ProcesoUsuario[]
+  asignacionesEvaluador  AsignacionEvaluador[]
+  fundamentaciones       Fundamentacion[]
+  evaluaciones           Evaluacion[]
+  solicitudesCreadas     Solicitud[]          @relation("SolicitudEvaluador")
+  respuestas             Respuesta[]
+  auditorias             Auditoria[]
+}
+
+// ==================== CATALOG ====================
+
+model Instrumento {
+  id              String      @id @default(cuid())
+  idInstrumento   String      @unique // INT01, INT02
+  nombre          String
+  tipo            String      // Nacional, Internacional
+  descripcion     String?     @db.Text
+  valorMaximo     Float       @default(200)
+  createdAt       DateTime    @default(now())
+
+  categorias      Categoria[]
+  criterios       Criterio[]
+  procesos        Proceso[]
+}
+
+model Categoria {
+  id                  String      @id @default(cuid())
+  idCategoria         String      @unique // CAT-N01, CAT-I01
+  numero              Int
+  nombre              String
+  descripcion         String?     @db.Text
+  valorMaximo         Float
+  instrumentoId       String
+  instrumento         Instrumento @relation(fields: [instrumentoId], references: [id])
+  createdAt           DateTime    @default(now())
+
+  criterios           Criterio[]
+  asignaciones        AsignacionEvaluador[]
+}
+
+model Criterio {
+  id                  String      @id @default(cuid())
+  idCriterio          String      @unique // CR-N01, CR-I01
+  numero              Int
+  nombre              String
+  descripcion         String?     @db.Text
+  valorMaximo         Float
+  valorMinimo         Float       @default(0)
+  instrumentoId       String
+  instrumento         Instrumento @relation(fields: [instrumentoId], references: [id])
+  categoriaId         String
+  categoria           Categoria   @relation(fields: [categoriaId], references: [id])
+  createdAt           DateTime    @default(now())
+
+  elementos           Elemento[]
+  niveles             Nivel[]
+  fundamentaciones    Fundamentacion[]
+  evaluaciones        Evaluacion[]
+  solicitudes         Solicitud[]
+  estadosCriterio     EstadoCriterio[]
+  resultadosCriterio  ResultadoCriterio[]
+}
+
+model Elemento {
+  id              String    @id @default(cuid())
+  idElemento      String    @unique
+  numero          Int
+  tipo            String    // Definicion, Proposito, Alcance, etc.
+  contenido       String    @db.Text
+  criterioId      String
+  criterio        Criterio  @relation(fields: [criterioId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+model Nivel {
+  id              String    @id @default(cuid())
+  idNivel         String    @unique
+  numero          Int       // 1-5
+  descripcion     String    @db.Text
+  criterioId      String
+  criterio        Criterio  @relation(fields: [criterioId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+// ==================== OPERATIONAL ====================
+
+model Proceso {
+  id                  String          @id @default(cuid())
+  idProceso           String          @unique // PR001
+  nombreProceso       String
+  estadoProceso       EstadoProceso   @default(EN_PREPARACION)
+  fechaInicio         DateTime?
+  fechaFin            DateTime?
+  instrumentoId       String
+  instrumento         Instrumento     @relation(fields: [instrumentoId], references: [id])
+  institucionId       String?
+  institucion         Institucion?    @relation(fields: [institucionId], references: [id])
+  programaId          String?
+  programaAcademico   ProgramaAcademico? @relation(fields: [programaId], references: [id])
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  usuarios            ProcesoUsuario[]
+  asignaciones        AsignacionEvaluador[]
+  fundamentaciones    Fundamentacion[]
+  evaluaciones        Evaluacion[]
+  solicitudes         Solicitud[]
+  estadosCriterio     EstadoCriterio[]
+  resultadosCriterio  ResultadoCriterio[]
+  resumenProceso      ResumenProceso?
+  auditorias          Auditoria[]
+  plantaDocente       PlantaDocente[]
+  mapeoDocente        MapeoDocente[]
+  matriculas          Matricula[]
+  rendimientos        Rendimiento[]
+}
+
+model ProcesoUsuario {
+  id          String   @id @default(cuid())
+  procesoId   String
+  proceso     Proceso  @relation(fields: [procesoId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([procesoId, userId])
+}
+
+model AsignacionEvaluador {
+  id              String    @id @default(cuid())
+  idAsignacion    String    @unique
+  claveEvaluador  String?
+  procesoId       String
+  proceso         Proceso   @relation(fields: [procesoId], references: [id])
+  categoriaId     String
+  categoria       Categoria @relation(fields: [categoriaId], references: [id])
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+model Fundamentacion {
+  id                      String         @id @default(cuid())
+  idFundamentacion        String         @unique
+  descripcion             String         @db.Text
+  descripcionEvidencia    String?        @db.Text
+  tipoEvidencia           TipoEvidencia?
+  ubicacionEvidencia      String?
+  linkEvidencia           String?
+  numeroFundamentacion    Int?
+  fechaRegistro           DateTime       @default(now())
+  procesoId               String
+  proceso                 Proceso        @relation(fields: [procesoId], references: [id])
+  criterioId              String
+  criterio                Criterio       @relation(fields: [criterioId], references: [id])
+  userId                  String
+  user                    User           @relation(fields: [userId], references: [id])
+  createdAt               DateTime       @default(now())
+}
+
+model Evaluacion {
+  id                  String            @id @default(cuid())
+  idEvaluacion        String            @unique
+  etapa               EtapaEvaluacion
+  rol                 RolSistema
+  nivel               Float?
+  justificacion       String?           @db.Text
+  observaciones       String?           @db.Text
+  recomendaciones     String?           @db.Text
+  fechaRegistro       DateTime          @default(now())
+  procesoId           String
+  proceso             Proceso           @relation(fields: [procesoId], references: [id])
+  criterioId          String
+  criterio            Criterio          @relation(fields: [criterioId], references: [id])
+  userId              String
+  user                User              @relation(fields: [userId], references: [id])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+}
+
+model Solicitud {
+  id                  String            @id @default(cuid())
+  idSolicitud         String            @unique
+  descripcion         String            @db.Text
+  tipo                String?
+  estado              EstadoSolicitud   @default(PENDIENTE)
+  fechaSolicitud      DateTime          @default(now())
+  procesoId           String
+  proceso             Proceso           @relation(fields: [procesoId], references: [id])
+  criterioId          String
+  criterio            Criterio          @relation(fields: [criterioId], references: [id])
+  evaluadorId         String
+  evaluador           User              @relation("SolicitudEvaluador", fields: [evaluadorId], references: [id])
+  createdAt           DateTime          @default(now())
+
+  respuestas          Respuesta[]
+}
+
+model Respuesta {
+  id                      String         @id @default(cuid())
+  idRespuesta             String         @unique
+  respuesta               String         @db.Text
+  descripcionEvidencia    String?        @db.Text
+  tipoEvidencia           TipoEvidencia?
+  ubicacionEvidencia      String?
+  linkEvidencia           String?
+  fechaRegistro           DateTime       @default(now())
+  solicitudId             String
+  solicitud               Solicitud      @relation(fields: [solicitudId], references: [id])
+  userId                  String
+  user                    User           @relation(fields: [userId], references: [id])
+  createdAt               DateTime       @default(now())
+}
+
+model EstadoCriterio {
+  id                  String            @id @default(cuid())
+  idEstado            String            @unique
+  etapaActual         EtapaEvaluacion   @default(AUTOEVALUACION)
+  ordenEstado         Int               @default(1)
+  progresoPorcentaje  Float             @default(0)
+  responsableActual   String?
+  fechaInicio         DateTime?
+  fechaFin            DateTime?
+  procesoId           String
+  proceso             Proceso           @relation(fields: [procesoId], references: [id])
+  criterioId          String
+  criterio            Criterio          @relation(fields: [criterioId], references: [id])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([procesoId, criterioId])
+}
+
+model ResultadoCriterio {
+  id                      String              @id @default(cuid())
+  idResultado             String              @unique
+  nivelAutoevaluacion     Float?
+  nivelEvaluador          Float?
+  nivelDictamen           Float?
+  factor                  Float               @default(1)
+  puntajeAutoevaluacion   Float?
+  puntajeEvaluador        Float?
+  puntajeDictamen         Float?
+  diferenciaAutoEval      Float?
+  diferenciaEvalDict      Float?
+  estadoResultado         String?
+  observacionesFinales    String?             @db.Text
+  recomendacionesFinales  String?             @db.Text
+  fechaActualizacion      DateTime?
+  procesoId               String
+  proceso                 Proceso             @relation(fields: [procesoId], references: [id])
+  criterioId              String
+  criterio                Criterio            @relation(fields: [criterioId], references: [id])
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@unique([procesoId, criterioId])
+}
+
+model ResumenProceso {
+  id                          String                @id @default(cuid())
+  idResumen                   String                @unique
+  totalAutoevaluacion         Float                 @default(0)
+  totalEvaluador              Float                 @default(0)
+  totalDictamen               Float                 @default(0)
+  diferenciaTotalAutoDict     Float                 @default(0)
+  porcentajeCumplimiento      Float                 @default(0)
+  resultadoFinal              ResultadoAcreditacion @default(NO_ACREDITADO)
+  procesoId                   String                @unique
+  proceso                     Proceso               @relation(fields: [procesoId], references: [id])
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+}
+
+model Auditoria {
+  id              String    @id @default(cuid())
+  idAuditoria     String    @unique
+  accion          String
+  tabla           String
+  registroId      String?
+  valorAnterior   String?   @db.Text
+  valorNuevo      String?   @db.Text
+  fechaAccion     DateTime  @default(now())
+  procesoId       String?
+  proceso         Proceso?  @relation(fields: [procesoId], references: [id])
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+// ==================== INSTITUTIONAL / ACADEMIC ====================
+
+model Institucion {
+  id                  String    @id @default(cuid())
+  idInstitucion       String    @unique // INS001
+  nombre              String
+  campus              String?
+  direccion           String?   @db.Text
+  ciudad              String?
+  pais                String?
+  contactoPrincipal   String?
+  telefono            String?
+  correo              String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  programas           ProgramaAcademico[]
+  procesos            Proceso[]
+}
+
+model ProgramaAcademico {
+  id                  String        @id @default(cuid())
+  idPrograma          String        @unique // PROG001
+  nombre              String
+  tipoPrograma        TipoPrograma?
+  coordinador         String?
+  correoCoordinador   String?
+  institucionId       String
+  institucion         Institucion   @relation(fields: [institucionId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  procesos            Proceso[]
+}
+
+model PlantaDocente {
+  id                  String            @id @default(cuid())
+  idRegistro          String            @unique
+  tipoContratacion    TipoContratacion
+  gradoEstudio        GradoAcademico
+  numeroDocentes      Int
+  procesoId           String
+  proceso             Proceso           @relation(fields: [procesoId], references: [id])
+  createdAt           DateTime          @default(now())
+}
+
+model MapeoDocente {
+  id                      String            @id @default(cuid())
+  idDocente               String            @unique
+  nombre                  String
+  tipoContratacion        TipoContratacion?
+  gradoAcademico          GradoAcademico?
+  areaEspecializacion     String?
+  asignaturas             String?           @db.Text
+  experienciaProfesional  String?           @db.Text
+  antiguedadInstitucion   Float?
+  antiguedadPrograma      Float?
+  investigacion           String?           @db.Text
+  produccionAcademica     String?           @db.Text
+  certificaciones         String?           @db.Text
+  vinculacionSectorial    String?           @db.Text
+  actualizacionDocente    String?           @db.Text
+  observaciones           String?           @db.Text
+  cumplePerfil            Boolean?
+  nivelIdoneidad          Float?
+  procesoId               String
+  proceso                 Proceso           @relation(fields: [procesoId], references: [id])
+  createdAt               DateTime          @default(now())
+}
+
+model Matricula {
+  id              String      @id @default(cuid())
+  idMatricula     String      @unique
+  generacion      Int
+  tipoIngreso     TipoIngreso
+  genero          Genero
+  numero          Int
+  procesoId       String
+  proceso         Proceso     @relation(fields: [procesoId], references: [id])
+  createdAt       DateTime    @default(now())
+}
+
+model Rendimiento {
+  id                  String    @id @default(cuid())
+  idRendimiento       String    @unique
+  idCohorte           String
+  ingresaron          Int
+  desercion           Int       @default(0)
+  rezago              Int       @default(0)
+  egresados           Int       @default(0)
+  titulados           Int       @default(0)
+  procesoId           String
+  proceso             Proceso   @relation(fields: [procesoId], references: [id])
+  createdAt           DateTime  @default(now())
+}
